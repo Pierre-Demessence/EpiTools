@@ -1,0 +1,192 @@
+#!/usr/bin/env php
+<?php
+
+// ----- ----- GETTING THE OPTIONS ----- ----- //
+
+$OPTIONS = getopt("h::", array("help"));
+
+// ----- ----- DO YOU EVEN LIFT ? ----- ----- //
+
+if (isset($OPTIONS["h"]) || isset($OPTIONS["help"]))
+{
+	echo "This is a help text. For a program.\n";
+	echo "You can now thank Captain Obvious.\n";
+	exit(0);
+}
+
+// ----- ----- UPGRADE CHECJ ----- ----- //
+
+exec(dirname(__FILE__)."/../GitUC/gituc 1>/dev/tty", $NULL, $rv);
+if ($rv == 1)
+{
+	echo "Update completed.\n";
+	echo "Please, restart the program.\n";
+	exit(0);
+}
+
+// ----- ----- SOME FUNCTIONS ----- ----- //
+
+function a($n)
+{
+	do {
+	   $n++;
+	} while ($n % 8 != 0);
+	return $n;
+}
+
+// ----- ----- VARIABLES TO ASK ----- ----- //
+
+$CLASS_NAME = "";
+
+$HEAD_FILE = "";
+$SRCE_FILE = "";
+
+$HEAD_CONT = "";
+$SRCE_CONT = "";
+
+$ATTRIBUTES = array(
+);
+
+// ----- ----- THE ASKING ----- ----- //
+
+do {
+   echo "Name of the class ? ";
+   $CLASS_NAME = trim(fgets(STDIN));
+} while (empty($CLASS_NAME));
+
+do {
+   $another = false;
+   echo "Name of attribute ? (blank to stop) ";
+   $name = trim(fgets(STDIN));
+   if (!empty($name))
+      {
+	$another = true;
+	do {
+	   echo "Type of attribute {$name} ? ";
+	   $type = trim(fgets(STDIN));
+	} while (empty($type));
+	$ATTRIBUTES[$name] = $type;
+      }
+} while ($another);
+
+echo "Name of the header file ? [{$CLASS_NAME}.hh] ";
+$HEAD_FILE = trim(fgets(STDIN));
+if (empty($HEAD_FILE))
+   $HEAD_FILE = "{$CLASS_NAME}.hh";
+
+echo "Name of the source file ? [{$CLASS_NAME}.cpp] ";
+$SRCE_FILE = trim(fgets(STDIN));
+if (empty($SRCE_FILE))
+   $SRCE_FILE = "{$CLASS_NAME}.cpp";
+
+// ----- ----- INDENTATION IS GOOD ----- ----- //
+
+$MAX_LEN_TYPE = 0;
+foreach($ATTRIBUTES as $att => $type)
+{
+	if (strlen($type) > $MAX_LEN_TYPE)
+	   $MAX_LEN_TYPE = strlen($type);
+}
+
+// ----- ----- CONTENT OF HEADER FILE ----- ----- //
+
+$HEAD_MACRO = str_replace("HH", "H", str_replace(".", "_", strtoupper($HEAD_FILE))."_");
+
+$HEAD_CONT .= "#ifndef {$HEAD_MACRO}\n";
+$HEAD_CONT .= "# define {$HEAD_MACRO}\n";
+$HEAD_CONT .= "\n";
+
+$HEAD_CONT .= "class {$CLASS_NAME} {\n";
+$HEAD_CONT .= "protected:\n";
+foreach($ATTRIBUTES as $att => $type)
+{
+	$n_tab = 1 + ((a($MAX_LEN_TYPE+2) / 8) - ((a(strlen($type)+2)) / 8));
+	$HEAD_CONT .= "  $type".str_repeat("\t", $n_tab)."$att;\n";
+}
+
+$HEAD_CONT .= "\n";
+$HEAD_CONT .= "public:\n";
+$HEAD_CONT .= "  {$CLASS_NAME}();\n";
+$HEAD_CONT .= "  {$CLASS_NAME}(const {$CLASS_NAME}&);\n";
+$HEAD_CONT .= "  ~{$CLASS_NAME}();\n";
+$HEAD_CONT .= "  {$CLASS_NAME}&\toperator=(const {$CLASS_NAME}&);\n";
+$HEAD_CONT .= "\n";
+foreach($ATTRIBUTES as $att => $type)
+{
+	$n_tab = 1 + ((a($MAX_LEN_TYPE+2) / 8) - ((a(strlen($type)+2)) / 8));
+	$HEAD_CONT .= "  $type".str_repeat("\t", $n_tab).($type=="bool"?"is":"get").ucfirst($att)."() const;\n";
+}
+$HEAD_CONT .= "\n";
+foreach($ATTRIBUTES as $att => $type)
+{
+	$HEAD_CONT .= "  void\tset".ucfirst($att)."($type);\n";
+}
+$HEAD_CONT .= "\n";
+$HEAD_CONT .= "};\n";
+$HEAD_CONT .= "\n";
+$HEAD_CONT .= "#endif /* !{$HEAD_MACRO} */";
+
+file_put_contents($HEAD_FILE, $HEAD_CONT);
+
+
+// ----- ----- CONTENT OF SOURCE FILE ----- ----- //
+
+$SRCE_CONT .= "#include \"{$HEAD_FILE}\"\n";
+$SRCE_CONT .= "\n";
+
+$SRCE_CONT .= "//----- ----- Constructors ----- ----- //\n";
+$SRCE_CONT .= "{$CLASS_NAME}::{$CLASS_NAME}()\n";
+$SRCE_CONT .= "{}\n";
+$SRCE_CONT .= "\n";
+
+$SRCE_CONT .= "{$CLASS_NAME}::{$CLASS_NAME}(const {$CLASS_NAME}& ref)\n";
+$SRCE_CONT .= "{\n";
+foreach($ATTRIBUTES as $att => $type)
+{
+	$SRCE_CONT .= "  this->{$att} = ref.{$att};\n";
+}
+$SRCE_CONT .= "}\n";
+$SRCE_CONT .= "\n";
+
+$SRCE_CONT .= "//----- ----- Destructor ----- ----- //\n";
+$SRCE_CONT .= "{$CLASS_NAME}::~{$CLASS_NAME}()\n";
+$SRCE_CONT .= "{}\n";
+$SRCE_CONT .= "\n";
+
+$SRCE_CONT .= "//----- ----- Operators ----- ----- //\n";
+$SRCE_CONT .= "{$CLASS_NAME}&\t{$CLASS_NAME}::operator=(const {$CLASS_NAME}& ref)\n";
+$SRCE_CONT .= "{\n";
+foreach($ATTRIBUTES as $att => $type)
+{
+	$SRCE_CONT .= "  this->{$att} = ref.{$att};\n";
+}
+$SRCE_CONT .= "  return (*this);\n";
+$SRCE_CONT .= "}\n";
+$SRCE_CONT .= "\n";
+
+$SRCE_CONT .= "//----- ----- Getters ----- ----- //\n";
+foreach($ATTRIBUTES as $att => $type)
+{
+	$n_tab = 1 + ((a($MAX_LEN_TYPE) / 8) - ((a(strlen($type))) / 8));
+	$SRCE_CONT .= "$type".str_repeat("\t", $n_tab)."{$CLASS_NAME}::".($type=="bool"?"is":"get").ucfirst($att)."() const\n";
+	$SRCE_CONT .= "{\n";
+	$SRCE_CONT .= "  return (this->{$att});\n";
+	$SRCE_CONT .= "}\n";
+	$SRCE_CONT .= "\n";
+}
+
+$SRCE_CONT .= "//----- ----- Setters ----- ----- //\n";
+foreach($ATTRIBUTES as $att => $type)
+{
+	$SRCE_CONT .= "void\t{$CLASS_NAME}::set".ucfirst($att)."({$type} {$att})\n";
+	$SRCE_CONT .= "{\n";
+	$SRCE_CONT .= "  this->{$att} = {$att};\n";
+	$SRCE_CONT .= "}\n";
+	if ($att != key(array_slice($ATTRIBUTES, -1, 1, TRUE)))
+	   $SRCE_CONT .= "\n";
+}
+
+file_put_contents($SRCE_FILE, $SRCE_CONT);
+echo "Generation complete.\n";
+
+?>

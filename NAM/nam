@@ -1,0 +1,142 @@
+#!/bin/sh
+##Resolving true path of script
+SOURCE="${BASH_SOURCE[0]}"
+while [ -h "$SOURCE" ]; do
+    DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+    SOURCE="$(readlink "$SOURCE")"
+    [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+
+COMPILO="clang++ "
+CFLAGS="-ggdb3 -Werror -Wall -Wextra "
+FILES=""
+VALGRIND=""
+VFLAGS="--track-origins=yes "
+CAT=""
+NAME="`basename $0`"
+SHOW=0
+SEPARATOR=0
+
+$DIR/../GitUC/gituc
+if [[ $? -eq 1 ]];then
+    echo "Update completed."
+    echo "Please, restart the program."
+    exit 0
+fi
+
+usage()
+{
+    echo "$NAME: Not A Makefile."
+    echo "Compile and execute a program."
+    echo "Usage: $NAME [OPTION]... FILE..."
+    echo
+    echo "  -c compiler"
+    echo -e "\tchoose a compiler"
+    echo "  -cf"
+    echo -e "\tadd a flag to the compiler"
+    echo -e "\thas '-ggdb3 -Werror -Wall -Wextra' by default"
+    echo "  -e"
+    echo -e "\tdisplay $ at end of each line of the output"
+    echo "  -s"
+    echo -e "\tshow the compilation line"
+    echo "  -S"
+    echo -e "\tprint a separator line between compilation and execution"
+    echo "  -v"
+    echo -e "\tuse valgrind when executing"
+    echo "  -vf"
+    echo -e "\tadd a flag to valgrind"
+    echo -e "\thas '--track-origins=yes' by default"
+}
+
+main()
+{
+    init_args $@
+    compil
+}
+
+init_args()
+{
+    if [[ $# -eq 0 ]]; then
+	usage
+	exit 1
+    fi
+    while [[ $# -ne 0 ]]; do
+	case "$1" in
+	    -c)
+		if [[ $# -eq 1 ]]; then
+		    echo "$NAME: option requires an argument -- 'c'"
+		    usage
+		    exit 1
+		fi
+		COMPILO="$2 "
+		shift
+		;;
+	    -e)
+		CAT="| cat -e"
+		;;
+	    -cf)
+		if [[ $# -eq 1 ]]; then
+		    echo "$NAME: option requires an argument -- 'cf'"
+		    usage
+		    exit 1
+		fi
+		CFLAGS="$CFLAGS$2 "
+		shift
+		;;
+	    -s)
+		SHOW=1
+		;;
+	    -S)
+		SEPARATOR=1
+		;;
+	    -v)
+		VALGRIND="valgrind "
+		;;
+	    -vf)
+		if [[ $# -eq 1 ]]; then
+		    echo "$NAME: option requires an argument -- 'vf'"
+		    usage
+		    exit 1
+		fi
+		VFLAGS="$VFLAGS$2 "
+		shift
+		;;
+	    -|-[a-z]*)
+		opt=`echo $1 | grep -o "[a-z]*"`
+		echo "$NAME: invalid option -- '$opt'"
+		usage
+		exit 1
+		;;
+	    *)
+		FILES="$FILES$1 "
+		;;
+	esac
+	shift
+    done
+}
+
+show()
+{
+    if [[ SHOW -eq 1 ]]; then
+	echo "$1"
+    fi
+}
+
+compil()
+{
+    show "$COMPILO$CFLAGS$FILES"
+    `$COMPILO $FLAGS $FILES`
+    if [[ $? -eq 0 ]]; then
+	if [[ $SEPARATOR -eq 1 ]]; then
+	    echo "===== ===== ===== ===== ===== ===== ===== ===== ===== ====="
+	fi
+	show "$VALGRIND$VFLAGS./a.out $CAT"
+	if [[ "$VALGRIND" == "" ]]; then
+	    VFLAGS=""
+	fi
+	eval $VALGRIND $VFLAGS ./a.out $CAT
+    fi
+}
+
+main $@

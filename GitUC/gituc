@@ -1,0 +1,51 @@
+#!/usr/bin/env php
+<?php
+
+$hasUpdate = false;
+
+$branch = "master";
+if (isset($argv[1]))
+   $branch = $argv[1];
+
+$CONFIG_FILE = dirname(__FILE__)."/config.json";
+
+$firstExec = false;
+if (!file_exists($CONFIG_FILE))
+   {
+	file_put_contents($CONFIG_FILE, "");
+	$firstExec = true;
+   }
+$data = json_decode(file_get_contents($CONFIG_FILE), true);
+$ETag = $data["ETag"];
+
+exec("curl --max-time 3 --retry 0 -s -I https://api.github.com/repos/Pierre-Demessence/EpiTools/commits?sha={$branch} -H 'If-None-Match: \"{$ETag}\"'", $output);
+//var_dump($output);
+if ($output && $output[0] == "HTTP/1.1 200 OK")
+{
+	$ETag = preg_replace("/ETag: \"(.*)\"/", "$1", $output[10]);
+	if (!$firstExec)
+		$hasUpdate = true;
+}
+
+if ($hasUpdate)
+{
+	echo "An update is avaible.\n";
+	do {
+	   echo "Do you want to upgrade ? ";
+	   $yn = trim(fgets(STDIN));
+	   if (preg_match("/^(yes|y)$/i", $yn))
+	   {
+		echo "Updating...\n";
+		exec("git pull origin {$branch}");
+		$data["ETag"] = $ETag;
+		file_put_contents($CONFIG_FILE, json_encode($data));
+		exit(1);
+	   }
+	}
+	while (!preg_match("/^(yes|y|no|n)$/i", $yn));
+}
+
+file_put_contents($CONFIG_FILE, json_encode($data));
+
+exit(0);
+?>
