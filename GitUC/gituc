@@ -25,6 +25,8 @@ if ($output && $output[0] == "HTTP/1.1 200 OK")
 	$ETag = preg_replace("/ETag: \"(.*)\"/", "$1", $output[10]);
 	if (!$firstExec)
 		$hasUpdate = true;
+	else
+		$data["ETag"] = $ETag;
 }
 
 if ($hasUpdate)
