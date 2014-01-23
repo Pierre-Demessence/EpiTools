@@ -9,8 +9,16 @@ $OPTIONS = getopt("h::", array("help"));
 
 if (isset($OPTIONS["h"]) || isset($OPTIONS["help"]))
 {
-	echo "This is a help text. For a program.\n";
-	echo "You can now thank Captain Obvious.\n";
+	echo "Gen++ : A C++ class generator.\n";
+	echo "This program will ask you for a class name and its attributes (name and type of each)\nand will generate the header and source file of the class based on that.\n";
+	echo "It currently handle :\n";
+	echo "\t- Canonical mode.\n";
+	echo "\t- Basic getters and setters.\n";
+	echo "\t- STD headers inclusion.\n";
+	echo "\n";
+	echo "Tips :\n";
+	echo "\t- Put \"std::\" in front of each type of the stdlib.\n";
+	echo "\t  The program uses it to know if a type is part of the std or not.\n";
 	exit(0);
 }
 
@@ -96,7 +104,38 @@ $HEAD_CONT .= "#ifndef {$HEAD_MACRO}\n";
 $HEAD_CONT .= "# define {$HEAD_MACRO}\n";
 $HEAD_CONT .= "\n";
 
-$HEAD_CONT .= "class {$CLASS_NAME} {\n";
+$KNOWN_HEADERS = array(
+	       "string" => "string",
+       	       "vector" => "vector",
+	       "map" => "map",
+	       "stack" => "stack",
+	       "queue" => "queue",
+	       "list" => "list",
+	       "ostringstream" => "ostringstream",
+	       "exception" => "exception"
+);
+
+$HEADERS = array();
+
+foreach($KNOWN_HEADERS as $ntype => $header)
+{
+    foreach($ATTRIBUTES as $att => $type)
+    {
+	if (preg_replace("/([a-z]*).*/", "$1", $type) == $ntype)
+	   $HEADERS[$KNOWN_HEADERS[$ntype]] = "";
+    }
+}
+
+foreach($ATTRIBUTES as $att => $type)
+    if (substr($type, 0, 5) == "std::")
+       $HEADERS[preg_replace("/std::([a-z]*).*/", "$1", $type)] = "";
+
+foreach($HEADERS as $header => $nothing)
+    $HEAD_CONT .= "# include\t<{$header}>\n";
+$HEAD_CONT .= "\n";
+
+$HEAD_CONT .= "class {$CLASS_NAME}\n";
+$HEAD_CONT .= "{\n";
 $HEAD_CONT .= "protected:\n";
 foreach($ATTRIBUTES as $att => $type)
 {

@@ -1,0 +1,10 @@
+01-23-2014
+==========
+* Modified the help so that it's not useless anymore.
+* Program checks for types beginning with std:: and import the corresponding header automatically.
+* Some type / header name correspondance have been manually added, so it works for them even without std::.
+* Corrected few syntax typos to make the rendering more pretty.
+
+01-21-2014
+==========
+* Initial version.
