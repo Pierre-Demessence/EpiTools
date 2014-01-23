@@ -38,7 +38,7 @@ if ($hasUpdate)
 	   if (preg_match("/^(yes|y)$/i", $yn))
 	   {
 		echo "Updating...\n";
-		exec("git pull origin {$branch}");
+		exec("git -C ".dirname(__FILE__)." pull origin {$branch}");
 		$data["ETag"] = $ETag;
 		file_put_contents($CONFIG_FILE, json_encode($data));
 		exit(1);
