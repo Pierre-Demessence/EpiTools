@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/zsh
 NAME="gen++"
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 ln -s $DIR/$NAME ~/bin/$NAME > /dev/null 2>&1
